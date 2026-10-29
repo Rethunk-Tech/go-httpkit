@@ -14,5 +14,10 @@ Notable changes to `go-httpkit`. The format follows
 - Redirect policies `NoDowngrade`, `SameOrigin` and `NoFollow`, and `WithRedirect` to add one to a client without
   losing the client's own.
 - `Transport`, which sets a default User-Agent and reports every round trip.
+- `download.File`, a resumable, verified file download: it continues a partial with Range and If-Range, checks
+  announced SHA-256 and Content-MD5 digests, enforces a size limit, and fails a stalled body with `ErrIdle`.
+- `download.Limiter`, one bandwidth cap shared by every download that holds it, and `download.Sidecar`,
+  `Partial` and `Remove` for the files a paused download leaves behind.
+- `download.RangeReader`, an `io.ReaderAt` over a remote file's ranged GETs with a request budget.
 
 [Unreleased]: https://github.com/Rethunk-Tech/go-httpkit/commits/main
