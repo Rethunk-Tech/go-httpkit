@@ -61,7 +61,7 @@ func TestFileResumesAV038Sidecar(t *testing.T) {
 	var seen requests
 	srv := rangeServer(t, resumeBody, `"v1"`, &seen)
 	dest := newDest(t)
-	fixture, err := os.ReadFile("testdata/sidecar-v0.3.8.json")
+	fixture, err := os.ReadFile("testdata/sidecar.json")
 	if err != nil {
 		t.Fatal(err)
 	}

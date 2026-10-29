@@ -49,7 +49,7 @@ func FuzzContentRange(f *testing.F) {
 // A sidecar is whatever a crash or another program left on disk: File must never panic, never leave more than Limit
 // bytes, and never report success without a file.
 func FuzzSidecar(f *testing.F) {
-	fixture, err := os.ReadFile("testdata/sidecar-v0.3.8.json")
+	fixture, err := os.ReadFile("testdata/sidecar.json")
 	if err != nil {
 		f.Fatal(err)
 	}

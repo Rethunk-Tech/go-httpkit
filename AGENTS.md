@@ -2,8 +2,8 @@
 
 Package `httpkit` is the HTTP client plumbing a program needs once it talks to more than one site: a capped request,
 typed status and rate-limit errors, one Retry-After reader, redirect policies and a Transport. Package `download`
-is the resumable, verified, throttled file download built on it. Mortar is the one consumer; the module imports no
-consumer package, and its only non-stdlib dependency is go-safefs.
+is the resumable, verified, throttled file download built on it. The module imports no consumer package, and its
+only non-stdlib dependency is go-safefs.
 
 The module carries no product wording: error text is plain English for a developer, and a caller that shows a user
 something maps the typed errors itself. A host's own rate-limit answer and credentials reach `download.File` only
@@ -29,7 +29,7 @@ Windows-only behaviour runs; say here which tests depend on it.
 - `download.File` writes the sidecar before the first body byte, so a crash mid-body leaves a resumable pair. A
   network error, stall or cancel keeps the pair; a size or digest mismatch removes it, because the bytes are wrong
   rather than interrupted.
-- The sidecar's six JSON tags are an on-disk format that earlier writers produced, and `testdata/sidecar-v0.3.8.json`
+- The sidecar's six JSON tags are an on-disk format that earlier writers produced, and `testdata/sidecar.json`
   holds the bytes one of them wrote. A sidecar that is missing, torn or over 64 KiB reads as empty, so its partial is
   vouched for by nothing and is dropped.
 - Any 200 starts over and resets every recorded validator, size and digest: they describe another body. A 206 is
