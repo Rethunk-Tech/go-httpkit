@@ -6,6 +6,8 @@ Notable changes to `go-httpkit`. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-29
+
 ### Added
 
 - `DoCapped`, a size-capped request whose non-200 answers are a typed `*StatusError` matching `ErrNotFound` and
@@ -20,4 +22,5 @@ Notable changes to `go-httpkit`. The format follows
   `Partial` and `Remove` for the files a paused download leaves behind.
 - `download.RangeReader`, an `io.ReaderAt` over a remote file's ranged GETs with a request budget.
 
-[Unreleased]: https://github.com/Rethunk-Tech/go-httpkit/commits/main
+[Unreleased]: https://github.com/Rethunk-Tech/go-httpkit/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/Rethunk-Tech/go-httpkit/releases/tag/v0.1.0
