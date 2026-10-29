@@ -12,8 +12,8 @@ through `Options.Check` and `Options.Authorize`, so the module knows no host.
 ## Gate
 
 `gate` is the command. Each override in `.gate.toml` is there because a runner
-cannot resolve that check from PATH. The `windows-latest` test job is the only place
-Windows-only behaviour runs; say here which tests depend on it.
+cannot resolve that check from PATH. No code is OS-specific; the `windows-latest` job
+runs the same tests, which is where a rename or remove that Windows refuses shows up.
 
 ## Shape
 
