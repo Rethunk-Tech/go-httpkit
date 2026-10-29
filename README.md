@@ -11,8 +11,10 @@
 
 HTTP client plumbing: capped requests, typed status and rate-limit errors, Retry-After, redirect policies, and resumable verified file downloads. Package `httpkit`, module `github.com/Rethunk-Tech/go-httpkit`.
 
-<!-- scaffold: one short paragraph on what the package guarantees and why it exists, in plain
-words. -->
+A program that talks to several sites and downloads large files needs the same few things every time, and each is
+easy to get subtly wrong: a body read with no size bound, a `Retry-After` that overflows, an API key that follows a
+redirect to another host, a download that restarts from zero after a dropped connection. This module is the one
+correct copy of each.
 
 ## Quick start
 
@@ -24,7 +26,15 @@ A worked example and the contracts: [HUMANS.md](HUMANS.md).
 
 ## Features
 
-<!-- scaffold: 3 to 6 bullets, each a capability a caller can rely on. No roadmap. -->
+- `DoCapped` reads an answer at most N bytes and turns every other status into a `*StatusError` that
+  `errors.Is` matches against `ErrNotFound` and `ErrRateLimited`.
+- `RetryAfter` reads both header forms and refuses values that would overflow a `Duration`.
+- `NoDowngrade`, `SameOrigin` and `NoFollow` keep credentials where they belong; `WithRedirect` adds one to a
+  client without losing the client's own.
+- `Transport` sets a default User-Agent and reports every round trip.
+- `download.File` resumes, verifies and size-limits a download, fails a stalled body with `ErrIdle`, and shares one
+  bandwidth `Limiter` across downloads.
+- `download.RangeReader` reads a remote file's parts through ranged GETs.
 
 ## Documentation
 
