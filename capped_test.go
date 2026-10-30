@@ -119,3 +119,10 @@ func TestRateLimitErrorMatches(t *testing.T) {
 		t.Fatalf("got %q", got)
 	}
 }
+
+func TestStatusErrorMatchesOnlyItsOwnSentinel(t *testing.T) {
+	e := &httpkit.StatusError{Code: 429, Status: "429 Too Many Requests"}
+	if !errors.Is(e, httpkit.ErrRateLimited) || errors.Is(e, httpkit.ErrNotFound) || errors.Is(e, io.EOF) {
+		t.Errorf("Is: %v", e)
+	}
+}
