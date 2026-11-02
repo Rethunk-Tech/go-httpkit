@@ -45,7 +45,7 @@ func TestValidatorsRefuseAResumeUnderAnotherValidator(t *testing.T) {
 
 func TestCopyFailedNamesTheCause(t *testing.T) {
 	x := &transfer{url: "u", opts: Options{Limit: 5}}
-	live := context.Background()
+	live := t.Context()
 	cancelled, cancel := context.WithCancel(live)
 	cancel()
 	idle, stall := context.WithCancelCause(live)
@@ -66,7 +66,7 @@ func TestCopyFailedNamesTheCause(t *testing.T) {
 }
 
 func TestNewRangeReaderDefaultsItsClient(t *testing.T) {
-	if r := NewRangeReader(context.Background(), nil, "u", 1); r.hc != http.DefaultClient {
+	if r := NewRangeReader(t.Context(), nil, "u", 1); r.hc != http.DefaultClient {
 		t.Error("a nil client was kept")
 	}
 }

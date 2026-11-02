@@ -1,11 +1,8 @@
 package download
 
 import (
-	"bufio"
-	"context"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -86,29 +83,4 @@ func readFile(t *testing.T, path string) string {
 		t.Fatal(err)
 	}
 	return string(b)
-}
-
-// pipeClient is a client whose every connection is a net.Pipe served by handle, so a test can run inside a
-// testing/synctest bubble: httptest's loopback listener is network IO the bubble does not count as durably blocked.
-func pipeClient(handle func(c net.Conn, req *http.Request)) *http.Client {
-	return &http.Client{Transport: &http.Transport{
-		DisableKeepAlives: true,
-		DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-			client, server := net.Pipe()
-			go func() {
-				defer func() { _ = server.Close() }()
-				req, err := http.ReadRequest(bufio.NewReader(server))
-				if err != nil {
-					return
-				}
-				handle(server, req)
-			}()
-			return client, nil
-		},
-	}}
-}
-
-// respond writes an HTTP/1.1 answer by hand and returns without closing, so a handler can stall after it.
-func respond(c net.Conn, status string, length int, body string) {
-	_, _ = fmt.Fprintf(c, "HTTP/1.1 %s\r\nContent-Length: %d\r\n\r\n%s", status, length, body)
 }
