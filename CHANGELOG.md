@@ -6,6 +6,11 @@ Notable changes to `go-httpkit`. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `DoJSON`: a capped request that decodes a 200 JSON answer, with a 429 as `*RateLimitError`, other statuses as
+  `*StatusError`, and `JSONOptions.Check` for a caller that reads a status itself.
+
 ## [0.1.0] - 2026-10-29
 
 ### Added

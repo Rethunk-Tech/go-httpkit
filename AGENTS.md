@@ -51,6 +51,7 @@ runs the same tests, which is where a rename or remove that Windows refuses show
 | --- | --- |
 | `doc.go` | Package documentation. |
 | `capped.go` | `DoCapped`, `StatusError`, `ErrNotFound`, `ErrRateLimited`. |
+| `json.go` | `DoJSON`, `JSONOptions`. |
 | `ratelimit.go` | `RateLimitError`, `RetryAfter`. |
 | `redirect.go` | `NoDowngrade`, `SameOrigin`, `NoFollow`, `WithRedirect`. |
 | `transport.go` | `Transport`. |
