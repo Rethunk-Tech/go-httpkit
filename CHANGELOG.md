@@ -6,10 +6,18 @@ Notable changes to `go-httpkit`. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-07
+
 ### Added
 
 - `DoJSON`: a capped request that decodes a 200 JSON answer, with a 429 as `*RateLimitError`, other statuses as
   `*StatusError`, and `JSONOptions.Check` for a caller that reads a status itself.
+- `StripCrossHost`, a redirect policy that drops credential headers on a redirect to another host; `RedactURL` and `RedactError` keep a query's signature or key out of error text; `DefaultTimeout` bounds a request made with a nil client.
+
+### Fixed
+
+- `download` treats a short or mismatched 206 as an error, and its errors drop the URL's query.
+- Credential headers no longer follow a redirect to another host.
 
 ## [0.1.0] - 2026-10-29
 
@@ -27,5 +35,6 @@ Notable changes to `go-httpkit`. The format follows
   `Partial` and `Remove` for the files a paused download leaves behind.
 - `download.RangeReader`, an `io.ReaderAt` over a remote file's ranged GETs with a request budget.
 
-[Unreleased]: https://github.com/Rethunk-Tech/go-httpkit/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Rethunk-Tech/go-httpkit/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Rethunk-Tech/go-httpkit/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Rethunk-Tech/go-httpkit/releases/tag/v0.1.0
