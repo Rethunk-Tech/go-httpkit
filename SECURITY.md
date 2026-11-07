@@ -20,6 +20,11 @@ Please do not open a public issue for a suspected vulnerability first.
 - A redirect: a credential must not follow one off its origin or from https to another scheme. `NoDowngrade` and
   `SameOrigin` refuse both (`TestNoDowngradeAndSameOrigin`, `TestFileRefusesAnHTTPSDowngrade`), and `WithRedirect`
   keeps them in force on a client that has its own policy (`TestWithRedirectChainsAndLeavesTheClientAlone`).
+- A credential header: a redirect to another host also loses every credential-looking header (`NoDowngrade`,
+  `StripCrossHost`) and everything `download.Options.Authorize` sets, since net/http strips only Authorization,
+  Cookie and WWW-Authenticate. Error texts carry the URL without its query (`RedactURL`).
+- A ranged read: `RangeReader` fails with `io.ErrUnexpectedEOF` on a 206 whose `Content-Range` or length is not the
+  range asked for. A nil client has `DefaultTimeout`.
 - Response headers: `RetryAfter` never overflows a `Duration` (`FuzzRetryAfter`); the `Content-Range` parser accepts
   only a real interval (`FuzzContentRange`); neither panics.
 - A sidecar file: `download.File` treats arbitrary sidecar bytes as an untrusted hint, never panics on them and

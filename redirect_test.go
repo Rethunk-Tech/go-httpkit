@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/Rethunk-Tech/go-httpkit"
@@ -105,4 +106,67 @@ func TestWithRedirectChainsAndLeavesTheClientAlone(t *testing.T) {
 	if httpkit.WithRedirect(nil, httpkit.NoFollow) == http.DefaultClient || http.DefaultClient.CheckRedirect != nil {
 		t.Fatal("nil must copy http.DefaultClient, not change it")
 	}
+}
+
+// seenHeaders runs a request through a redirect from one real server to another and returns the headers the second saw.
+func seenHeaders(t *testing.T, hc *http.Client, set map[string]string) http.Header {
+	t.Helper()
+	var got http.Header
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.Header.Clone()
+		_, _ = w.Write([]byte("ok"))
+	}))
+	defer target.Close()
+	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, target.URL, http.StatusFound)
+	}))
+	defer origin.Close()
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, origin.URL, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for k, v := range set {
+		req.Header.Set(k, v)
+	}
+	if _, err := httpkit.DoCapped(hc, req, 1<<10, nil); err != nil {
+		t.Fatal(err)
+	}
+	return got
+}
+
+func TestACredentialHeaderDoesNotFollowARedirectToAnotherHost(t *testing.T) {
+	got := seenHeaders(t, httpkit.WithRedirect(nil, httpkit.NoDowngrade),
+		map[string]string{"X-Api-Key": "k", "X-Session-Id": "s", "Accept": "text/plain"})
+	if got.Get("X-Api-Key") != "" || got.Get("X-Session-Id") != "" {
+		t.Fatalf("credentials crossed hosts: %v", got)
+	}
+	if got.Get("Accept") != "text/plain" {
+		t.Fatalf("an ordinary header was dropped: %v", got)
+	}
+}
+
+func TestStripCrossHostDropsTheNamedHeaders(t *testing.T) {
+	got := seenHeaders(t, httpkit.WithRedirect(nil, httpkit.StripCrossHost("X-Customer")), map[string]string{"X-Customer": "c"})
+	if got.Get("X-Customer") != "" {
+		t.Fatalf("named header crossed hosts: %v", got)
+	}
+}
+
+func TestRedactURLAndError(t *testing.T) {
+	if got := httpkit.RedactURL("https://u:p@h.example/a?api_key=SECRET#f"); got != "https://h.example/a" {
+		t.Fatalf("RedactURL = %q", got)
+	}
+	_, err := httpkit.DoCapped(nil, mustReq(t, "http://127.0.0.1:1/x?api_key=SECRET"), 1, nil)
+	if err == nil || strings.Contains(err.Error(), "SECRET") {
+		t.Fatalf("error leaks the query: %v", err)
+	}
+}
+
+func mustReq(t *testing.T, u string) *http.Request {
+	t.Helper()
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, u, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return req
 }

@@ -30,6 +30,9 @@ func File(ctx context.Context, hc *http.Client, url, dest string, opts Options) 
 		hc = &http.Client{Timeout: 30 * time.Minute}
 	}
 	x := &transfer{hc: httpkit.WithRedirect(hc, httpkit.NoDowngrade), url: url, dest: dest, opts: opts}
+	if opts.Authorize != nil {
+		x.hc = httpkit.WithRedirect(x.hc, dropAuthorized(opts.Authorize))
+	}
 	for range restarts + 1 {
 		retry, err := x.once(ctx)
 		if !retry {
@@ -80,7 +83,7 @@ func (x *transfer) once(ctx context.Context) (retry bool, err error) {
 	}
 	resp, err := x.hc.Do(req)
 	if err != nil {
-		return false, err
+		return false, httpkit.RedactError(err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if x.opts.Check != nil {
@@ -254,7 +257,7 @@ func (x *transfer) copyFailed(ctx, reqCtx context.Context, err error) error {
 	case errors.Is(context.Cause(reqCtx), ErrIdle):
 		return ErrIdle
 	}
-	return fmt.Errorf("download %s: %w", x.url, err)
+	return fmt.Errorf("download %s: %w", httpkit.RedactURL(x.url), httpkit.RedactError(err))
 }
 
 // idleBody cancels the request when one Read blocks for idle. The timer runs only inside Read, so disk writes and
@@ -269,4 +272,20 @@ func (b *idleBody) Read(p []byte) (int, error) {
 	t := time.AfterFunc(b.idle, func() { b.cancel(ErrIdle) })
 	defer t.Stop()
 	return b.r.Read(p)
+}
+
+// dropAuthorized is a redirect policy that removes every header authorize sets from a request sent to another host.
+// authorize runs on a bare request here, only to learn which headers it owns.
+func dropAuthorized(authorize func(*http.Request)) func(*http.Request, []*http.Request) error {
+	return func(req *http.Request, via []*http.Request) error {
+		if len(via) == 0 || req.URL.Host == via[0].URL.Host {
+			return nil
+		}
+		probe := &http.Request{Method: http.MethodGet, URL: via[0].URL, Header: http.Header{}}
+		authorize(probe)
+		for k := range probe.Header {
+			req.Header.Del(k)
+		}
+		return nil
+	}
 }

@@ -7,9 +7,11 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -383,5 +385,28 @@ func TestFileCancelKeepsThePartial(t *testing.T) {
 	Remove(dest)
 	if Partial(dest) != 0 {
 		t.Fatal("Remove left the pair")
+	}
+}
+
+func TestFileDropsWhatAuthorizeSetOnARedirectToAnotherHost(t *testing.T) {
+	var got http.Header
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.Header.Clone()
+		_, _ = io.WriteString(w, "body")
+	}))
+	defer target.Close()
+	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, target.URL, http.StatusFound)
+	}))
+	defer origin.Close()
+	err := File(t.Context(), nil, origin.URL, filepath.Join(t.TempDir(), "f"), Options{
+		Limit:     1 << 10,
+		Authorize: func(r *http.Request) { r.Header.Set("X-Customer", "c") },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Get("X-Customer") != "" {
+		t.Fatalf("Authorize's header crossed hosts: %v", got)
 	}
 }
