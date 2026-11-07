@@ -7,17 +7,17 @@ import (
 	safefs "github.com/Rethunk-Tech/go-safefs"
 )
 
-// DoCapped sends req with hc (nil means http.DefaultClient) and returns the body of a 200 answer, at most limit
+// DoCapped sends req with hc (nil means a client with DefaultTimeout) and returns the body of a 200 answer, at most limit
 // bytes. check (nil means none) runs on every response before the status test; a non-nil error from it is returned
 // after the body is closed. Any other status is a *StatusError; a body over limit is safefs.ErrTooLarge. The body
 // is always closed.
 func DoCapped(hc *http.Client, req *http.Request, limit int64, check func(*http.Response) error) ([]byte, error) {
 	if hc == nil {
-		hc = http.DefaultClient
+		hc = defaultClient()
 	}
 	resp, err := hc.Do(req) //nolint:gosec // G704: the caller built req and owns its destination
 	if err != nil {
-		return nil, err
+		return nil, RedactError(err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if check != nil {

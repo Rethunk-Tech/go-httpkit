@@ -35,10 +35,10 @@ type RangeReader struct {
 	requests int
 }
 
-// NewRangeReader reads the size-byte file at url with hc (nil means http.DefaultClient).
+// NewRangeReader reads the size-byte file at url with hc (nil means a client with httpkit.DefaultTimeout).
 func NewRangeReader(ctx context.Context, hc *http.Client, url string, size int64) *RangeReader {
 	if hc == nil {
-		hc = http.DefaultClient
+		hc = &http.Client{Timeout: httpkit.DefaultTimeout}
 	}
 	return &RangeReader{ctx: ctx, hc: hc, url: url, size: size}
 }
@@ -67,6 +67,7 @@ func (r *RangeReader) ReadAt(p []byte, off int64) (int, error) {
 	}
 	n := copy(p, r.buf[off-r.at:])
 	if n < len(p) {
+		// The chunk was checked against its range, so a short copy means the file ends before off+len(p).
 		return n, io.EOF
 	}
 	return n, nil
@@ -81,11 +82,22 @@ func (r *RangeReader) get(start, end int64) ([]byte, error) {
 	req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", start, end-1))
 	resp, err := r.hc.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("ranged read: %w", err)
+		return nil, fmt.Errorf("ranged read: %w", httpkit.RedactError(err))
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusPartialContent {
 		return nil, &httpkit.StatusError{Code: resp.StatusCode, Status: resp.Status}
 	}
-	return io.ReadAll(io.LimitReader(resp.Body, end-start))
+	// A server may answer a different range than asked, or end the body early; either would read as the file's end.
+	if from, to, _, ok := parseContentRange(resp.Header.Get("Content-Range")); !ok || from != start || to != end-1 {
+		return nil, fmt.Errorf("ranged read: the answer is not bytes %d-%d: %w", start, end-1, io.ErrUnexpectedEOF)
+	}
+	b, err := io.ReadAll(io.LimitReader(resp.Body, end-start))
+	if err != nil {
+		return nil, fmt.Errorf("ranged read: %w", httpkit.RedactError(err))
+	}
+	if int64(len(b)) != end-start {
+		return nil, fmt.Errorf("ranged read: %d of %d bytes arrived: %w", len(b), end-start, io.ErrUnexpectedEOF)
+	}
+	return b, nil
 }

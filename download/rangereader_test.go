@@ -89,3 +89,31 @@ func TestRangeReaderBudgetAndStatus(t *testing.T) {
 		t.Fatalf("a server ignoring Range: %v", err)
 	}
 }
+
+func TestRangeReaderRefusesAShortOrMismatchedPartial(t *testing.T) {
+	for name, h := range map[string]func(http.ResponseWriter){
+		"short": func(w http.ResponseWriter) {
+			w.Header().Set("Content-Range", "bytes 0-63/100")
+			w.WriteHeader(http.StatusPartialContent)
+			_, _ = io.WriteString(w, "0123456789")
+		},
+		"other range": func(w http.ResponseWriter) {
+			w.Header().Set("Content-Range", "bytes 10-73/100")
+			w.WriteHeader(http.StatusPartialContent)
+			_, _ = io.WriteString(w, strings.Repeat("x", 64))
+		},
+		"no range": func(w http.ResponseWriter) {
+			w.WriteHeader(http.StatusPartialContent)
+			_, _ = io.WriteString(w, strings.Repeat("x", 64))
+		},
+	} {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { h(w) }))
+		r := NewRangeReader(t.Context(), nil, srv.URL, 100)
+		r.Chunk = 64
+		n, err := r.ReadAt(make([]byte, 64), 0)
+		srv.Close()
+		if !errors.Is(err, io.ErrUnexpectedEOF) {
+			t.Errorf("%s: ReadAt = %d, %v; want ErrUnexpectedEOF", name, n, err)
+		}
+	}
+}

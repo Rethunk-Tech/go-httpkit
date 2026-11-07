@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/Rethunk-Tech/go-httpkit"
 	"github.com/Rethunk-Tech/go-safefs"
 )
 
@@ -66,7 +67,7 @@ func TestCopyFailedNamesTheCause(t *testing.T) {
 }
 
 func TestNewRangeReaderDefaultsItsClient(t *testing.T) {
-	if r := NewRangeReader(t.Context(), nil, "u", 1); r.hc != http.DefaultClient {
+	if r := NewRangeReader(t.Context(), nil, "u", 1); r.hc == nil || r.hc.Timeout != httpkit.DefaultTimeout {
 		t.Error("a nil client was kept")
 	}
 }
