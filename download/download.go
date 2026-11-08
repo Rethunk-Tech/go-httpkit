@@ -12,7 +12,7 @@ import (
 var (
 	// ErrLinkExpired is a host refusing this URL with 401, 403 or 410; the caller may fetch a fresh link.
 	ErrLinkExpired = errors.New("the download link has expired")
-	// ErrChecksum is a finished file that does not match a digest the server announced; the file is removed.
+	// ErrChecksum is a finished file that does not match a digest the server announced or Options.Digest; the file is removed.
 	ErrChecksum = errors.New("the download did not match its checksum")
 	// ErrSize is a finished file whose size is not the one the server announced; the file is removed.
 	ErrSize = errors.New("the download is not the size the server announced")
@@ -43,6 +43,7 @@ type Options struct {
 	Limiter   *Limiter                   // Nil means unthrottled.
 	Authorize func(*http.Request)        // Sets credentials; called on every attempt's request.
 	Check     func(*http.Response) error // Runs before the status switch; non-nil aborts (a host's own limit answer).
+	Digest    string                     // "sha256:<hex>", "sha512:<hex>" or "md5:<hex>"; empty skips. A mismatch wraps ErrChecksum.
 }
 
 // idle is the effective idle limit; zero means none.

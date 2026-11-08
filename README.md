@@ -33,8 +33,9 @@ A worked example and the contracts: [HUMANS.md](HUMANS.md).
 - `NoDowngrade`, `SameOrigin` and `NoFollow` keep credentials where they belong; `WithRedirect` adds one to a
   client without losing the client's own.
 - `Transport` sets a default User-Agent and reports every round trip.
-- `download.File` resumes, verifies and size-limits a download, fails a stalled body with `ErrIdle`, and shares one
-  bandwidth `Limiter` across downloads.
+- `download.File` resumes, verifies and size-limits a download, checks an optional `Options.Digest` (`sha256`,
+  `sha512` or `md5` in `algo:hex` form), fails a stalled body with `ErrIdle`, and shares one bandwidth `Limiter`
+  across downloads.
 - `download.RangeReader` reads a remote file's parts through ranged GETs.
 
 ## Documentation

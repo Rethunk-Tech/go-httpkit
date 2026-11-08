@@ -119,7 +119,7 @@ func (x *transfer) prepare() (finished bool, err error) {
 	case x.meta.ExpectedSize > 0 && x.offset > x.meta.ExpectedSize:
 		x.reset()
 	case x.meta.ExpectedSize > 0 && x.offset == x.meta.ExpectedSize:
-		return true, verify(x.dest, x.meta)
+		return true, verify(x.dest, x.meta, x.opts.Digest)
 	}
 	return false, nil
 }
@@ -243,7 +243,7 @@ func (x *transfer) write(ctx, reqCtx context.Context, cancel context.CancelCause
 		Remove(x.dest)
 		return fmt.Errorf("%w: %d bytes, not %d", ErrSize, st.Size(), x.meta.ExpectedSize)
 	}
-	return verify(x.dest, x.meta)
+	return verify(x.dest, x.meta, x.opts.Digest)
 }
 
 // copyFailed names why the body copy stopped. A cancel wins over whatever the transport reported, and a stall is
