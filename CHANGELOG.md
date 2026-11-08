@@ -6,6 +6,10 @@ Notable changes to `go-httpkit`. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `NetReason` classifies a failed request as DNS, connection refused (including Windows WSAECONNREFUSED), timeout, or other.
+
 ## [0.2.0] - 2026-11-07
 
 ### Added

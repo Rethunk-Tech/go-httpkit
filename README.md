@@ -29,6 +29,7 @@ A worked example and the contracts: [HUMANS.md](HUMANS.md).
 - `DoCapped` reads an answer at most N bytes and turns every other status into a `*StatusError` that
   `errors.Is` matches against `ErrNotFound` and `ErrRateLimited`.
 - `RetryAfter` reads both header forms and refuses values that would overflow a `Duration`.
+- `NetReason` classifies a failed request as DNS, connection refused (including Windows WSAECONNREFUSED), timeout, or other.
 - `NoDowngrade`, `SameOrigin` and `NoFollow` keep credentials where they belong; `WithRedirect` adds one to a
   client without losing the client's own.
 - `Transport` sets a default User-Agent and reports every round trip.
