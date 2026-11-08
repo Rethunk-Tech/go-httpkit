@@ -6,6 +6,8 @@ Notable changes to `go-httpkit`. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-08
+
 ### Added
 
 - `NetReason` classifies a failed request as DNS, connection refused (including Windows WSAECONNREFUSED), timeout, or other.
@@ -41,6 +43,7 @@ Notable changes to `go-httpkit`. The format follows
   `Partial` and `Remove` for the files a paused download leaves behind.
 - `download.RangeReader`, an `io.ReaderAt` over a remote file's ranged GETs with a request budget.
 
-[Unreleased]: https://github.com/Rethunk-Tech/go-httpkit/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Rethunk-Tech/go-httpkit/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Rethunk-Tech/go-httpkit/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Rethunk-Tech/go-httpkit/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Rethunk-Tech/go-httpkit/releases/tag/v0.1.0
