@@ -12,8 +12,9 @@ through `Options.Check` and `Options.Authorize`, so the module knows no host.
 ## Gate
 
 `gate` is the command. Each override in `.gate.toml` is there because a runner
-cannot resolve that check from PATH. No code is OS-specific; the `windows-latest` job
-runs the same tests, which is where a rename or remove that Windows refuses shows up.
+cannot resolve that check from PATH. `errno_windows.go` and `errno_other.go` hold the
+WSAECONNREFUSED and WSAETIMEDOUT consts; the `windows-latest` job runs the same tests, which is where a
+rename or remove that Windows refuses shows up.
 
 ## Shape
 
@@ -55,6 +56,7 @@ runs the same tests, which is where a rename or remove that Windows refuses show
 | `ratelimit.go` | `RateLimitError`, `RetryAfter`. |
 | `redirect.go` | `NoDowngrade`, `SameOrigin`, `NoFollow`, `WithRedirect`. |
 | `transport.go` | `Transport`. |
+| `netreason.go` | `NetReason`, `Reason`. |
 | `download/download.go` | Sentinels, `Options`, `Progress`, the restart and idle constants. |
 | `download/file.go` | `File`, divided into `prepare`, `accept` and `write`, and the idle-limit body wrapper. |
 | `download/sidecar.go` | The sidecar format, `Sidecar`, `Partial`, `Remove`. |
