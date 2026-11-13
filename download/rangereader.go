@@ -40,7 +40,7 @@ func NewRangeReader(ctx context.Context, hc *http.Client, url string, size int64
 	if hc == nil {
 		hc = &http.Client{Timeout: httpkit.DefaultTimeout}
 	}
-	return &RangeReader{ctx: ctx, hc: hc, url: url, size: size}
+	return &RangeReader{ctx: ctx, hc: httpkit.WithRedirect(hc, httpkit.NoDowngrade), url: url, size: size}
 }
 
 // ReadAt implements io.ReaderAt.

@@ -117,3 +117,25 @@ func TestRangeReaderRefusesAShortOrMismatchedPartial(t *testing.T) {
 		}
 	}
 }
+
+func TestRangeReaderRefusesAnHTTPSDowngrade(t *testing.T) {
+	t.Parallel()
+	var httpHits atomic.Int32
+	plain := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		httpHits.Add(1)
+	}))
+	t.Cleanup(plain.Close)
+	tls := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, plain.URL+"/file?token=secret", http.StatusFound)
+	}))
+	t.Cleanup(tls.Close)
+
+	r := NewRangeReader(t.Context(), tls.Client(), tls.URL+"/file?token=secret", 100)
+	_, err := r.ReadAt(make([]byte, 8), 0)
+	if err == nil || !strings.Contains(err.Error(), "refusing a redirect") {
+		t.Fatalf("err = %v", err)
+	}
+	if httpHits.Load() != 0 {
+		t.Fatalf("insecure server got %d requests", httpHits.Load())
+	}
+}
