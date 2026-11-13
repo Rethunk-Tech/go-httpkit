@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/Rethunk-Tech/go-httpkit"
 )
@@ -33,6 +34,7 @@ type RangeReader struct {
 	at       int64
 	buf      []byte
 	requests int
+	etag     string // The first answer's strong ETag; later chunks must come from the same representation.
 }
 
 // NewRangeReader reads the size-byte file at url with hc (nil means a client with httpkit.DefaultTimeout).
@@ -48,7 +50,9 @@ func (r *RangeReader) ReadAt(p []byte, off int64) (int, error) {
 	if off < 0 || off >= r.size {
 		return 0, io.EOF
 	}
-	if off < r.at || off+int64(len(p)) > r.at+int64(len(r.buf)) {
+	end := r.at + int64(len(r.buf))
+	// A chunk that ends at the file's end already holds every byte there is, however far p reaches past it.
+	if off < r.at || (off+int64(len(p)) > end && end != r.size) {
 		r.requests++
 		if r.requests > cmp.Or(r.MaxRequests, defaultMaxRequests) {
 			return 0, ErrRangeBudget
@@ -80,6 +84,9 @@ func (r *RangeReader) get(start, end int64) ([]byte, error) {
 		return nil, fmt.Errorf("ranged read: %w", err)
 	}
 	req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", start, end-1))
+	if r.etag != "" {
+		req.Header.Set("If-Range", r.etag)
+	}
 	resp, err := r.hc.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("ranged read: %w", httpkit.RedactError(err))
@@ -89,8 +96,16 @@ func (r *RangeReader) get(start, end int64) ([]byte, error) {
 		return nil, &httpkit.StatusError{Code: resp.StatusCode, Status: resp.Status}
 	}
 	// A server may answer a different range than asked, or end the body early; either would read as the file's end.
-	if from, to, _, ok := parseContentRange(resp.Header.Get("Content-Range")); !ok || from != start || to != end-1 {
-		return nil, fmt.Errorf("ranged read: the answer is not bytes %d-%d: %w", start, end-1, io.ErrUnexpectedEOF)
+	// A total other than size, or an ETag other than the first chunk's, means the file changed between chunks.
+	from, to, total, ok := parseContentRange(resp.Header.Get("Content-Range"))
+	if !ok || from != start || to != end-1 || (total > 0 && total != r.size) {
+		return nil, fmt.Errorf("ranged read: the answer is not bytes %d-%d of %d: %w", start, end-1, r.size, io.ErrUnexpectedEOF)
+	}
+	if etag := resp.Header.Get("ETag"); etag != "" && !strings.HasPrefix(etag, "W/") {
+		if r.etag != "" && etag != r.etag {
+			return nil, fmt.Errorf("ranged read: the file changed between chunks: %w", io.ErrUnexpectedEOF)
+		}
+		r.etag = etag
 	}
 	b, err := io.ReadAll(io.LimitReader(resp.Body, end-start))
 	if err != nil {

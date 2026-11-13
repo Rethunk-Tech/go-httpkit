@@ -139,3 +139,61 @@ func TestRangeReaderRefusesAnHTTPSDowngrade(t *testing.T) {
 		t.Fatalf("insecure server got %d requests", httpHits.Load())
 	}
 }
+
+func TestRangeReaderReadPastEndReusesTheTailChunk(t *testing.T) {
+	t.Parallel()
+	body := strings.Repeat("0123456789", 20_000)
+	var n atomic.Int32
+	srv := partialServer(t, body, &n)
+	r := NewRangeReader(t.Context(), srv.Client(), srv.URL, int64(len(body)))
+	r.MaxRequests = 2
+	p := make([]byte, 100)
+	for range 5 {
+		got, err := r.ReadAt(p, int64(len(body))-50)
+		if got != 50 || !errors.Is(err, io.EOF) {
+			t.Fatalf("n %d err %v", got, err)
+		}
+	}
+	if n.Load() != 1 {
+		t.Fatalf("requests = %d, want 1", n.Load())
+	}
+}
+
+func TestRangeReaderRefusesAFileThatChangesBetweenChunks(t *testing.T) {
+	t.Parallel()
+	body := strings.Repeat("0123456789", 20_000)
+	var n atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		v := n.Add(1)
+		var from, to int
+		_, _ = fmt.Sscanf(r.Header.Get("Range"), "bytes=%d-%d", &from, &to)
+		to = min(to, len(body)-1)
+		if v > 1 && r.Header.Get("If-Range") != `"v1"` {
+			t.Errorf("If-Range = %q", r.Header.Get("If-Range"))
+		}
+		w.Header().Set("ETag", fmt.Sprintf(`"v%d"`, v))
+		w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", from, to, len(body)))
+		w.WriteHeader(http.StatusPartialContent)
+		_, _ = io.WriteString(w, body[from:to+1])
+	}))
+	t.Cleanup(srv.Close)
+	r := NewRangeReader(t.Context(), srv.Client(), srv.URL, int64(len(body)))
+	p := make([]byte, 100)
+	if _, err := r.ReadAt(p, int64(len(body))-100); err != nil && !errors.Is(err, io.EOF) {
+		t.Fatal(err)
+	}
+	if _, err := r.ReadAt(p, 0); !errors.Is(err, io.ErrUnexpectedEOF) {
+		t.Fatalf("err = %v, want ErrUnexpectedEOF", err)
+	}
+}
+
+func TestRangeReaderRefusesAChangedTotal(t *testing.T) {
+	t.Parallel()
+	body := strings.Repeat("0123456789", 20_000)
+	var n atomic.Int32
+	srv := partialServer(t, body, &n)
+	r := NewRangeReader(t.Context(), srv.Client(), srv.URL, int64(len(body))+5)
+	if _, err := r.ReadAt(make([]byte, 10), 0); !errors.Is(err, io.ErrUnexpectedEOF) {
+		t.Fatalf("err = %v, want ErrUnexpectedEOF", err)
+	}
+}
