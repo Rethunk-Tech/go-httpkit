@@ -164,6 +164,7 @@ func TestStripCrossHostKeepsTheOriginAndDropsOnDowngrade(t *testing.T) {
 		{"host case", "https://API.example/x", "https://api.example/y", true},
 		{"explicit default port", "https://api.example:443/x", "https://api.example/y", true},
 		{"upgrade", "http://api.example/x", "https://api.example/y", true},
+		{"downgrade", "https://api.example/x", "http://api.example/y", false},
 		{"another port", "https://api.example/x", "https://api.example:8443/y", false},
 	} {
 		req, via := chain(t, c.first, c.next)

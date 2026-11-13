@@ -23,10 +23,15 @@ var credentialWords = []string{"auth", "key", "token", "secret", "cookie", "sess
 
 // StripCrossHost returns a redirect policy that deletes the named headers, and every header whose name looks like a
 // credential (it holds auth, key, token, secret, cookie, session, credential or password), from a request redirected to a
-// host other than the first request's. It never refuses a redirect.
+// host other than the first request's, or from https to plain http, which would send them in clear text. It never
+// refuses a redirect.
 func StripCrossHost(names ...string) func(*http.Request, []*http.Request) error {
 	return func(req *http.Request, via []*http.Request) error {
-		if len(via) == 0 || hostKey(req.URL) == hostKey(via[0].URL) {
+		if len(via) == 0 {
+			return nil
+		}
+		downgrade := via[0].URL.Scheme == "https" && req.URL.Scheme != "https"
+		if hostKey(req.URL) == hostKey(via[0].URL) && !downgrade {
 			return nil
 		}
 		for k := range req.Header {
