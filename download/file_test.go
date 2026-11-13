@@ -1,6 +1,8 @@
 package download
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/md5" // #nosec G501 -- Content-MD5 is MD5 by RFC 1864.
 	"crypto/sha256"
@@ -404,6 +406,31 @@ func TestFileDoesNotApplyAPartialContentMD5ToTheFinishedFile(t *testing.T) {
 	}
 	if readFile(t, dest) != resumeBody {
 		t.Fatal("dest is not the full body")
+	}
+}
+
+func TestFileIgnoresAContentMD5OfTheGzipCodedBody(t *testing.T) {
+	t.Parallel()
+	var coded bytes.Buffer
+	zw := gzip.NewWriter(&coded)
+	_, _ = io.WriteString(zw, resumeBody)
+	_ = zw.Close()
+	sum := md5.Sum(coded.Bytes()) // #nosec G401 -- Content-MD5 is MD5 by RFC 1864.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			t.Error("the transport did not ask for gzip, so this test proves nothing")
+		}
+		w.Header().Set("Content-Encoding", "gzip")
+		w.Header().Set("Content-MD5", base64.StdEncoding.EncodeToString(sum[:]))
+		_, _ = w.Write(coded.Bytes())
+	}))
+	t.Cleanup(srv.Close)
+	dest := newDest(t)
+	if err := fetch(t, srv, dest, Options{}); err != nil {
+		t.Fatalf("err = %v", err)
+	}
+	if readFile(t, dest) != resumeBody {
+		t.Fatal("dest is not the decoded body")
 	}
 }
 

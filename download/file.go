@@ -214,7 +214,8 @@ func (x *transfer) validators(resp *http.Response) (stale bool) {
 	if h := hashFrom(resp.Header); h != "" {
 		x.meta.Hash = h
 	}
-	if resp.StatusCode == http.StatusOK {
+	// Content-MD5 covers the body as sent; the transport's gzip decoding means dest holds other bytes.
+	if resp.StatusCode == http.StatusOK && !resp.Uncompressed {
 		if v := strings.TrimSpace(resp.Header.Get("Content-MD5")); v != "" {
 			x.meta.MD5 = v
 		}
