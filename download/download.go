@@ -39,7 +39,7 @@ type Progress func(done, total int64)
 type Options struct {
 	Limit     int64                      // Required, > 0: most bytes the file may hold.
 	Progress  Progress                   // Called after every write.
-	Idle      time.Duration              // Zero means 30 s; negative disables. One body Read blocked this long fails with ErrIdle.
+	Idle      time.Duration              // Zero means 30 s; negative disables. Waiting this long for the headers or one body Read fails with ErrIdle.
 	Limiter   *Limiter                   // Nil means unthrottled.
 	Authorize func(*http.Request)        // Sets credentials; called on every attempt's request.
 	Check     func(*http.Response) error // Runs before the status switch; non-nil aborts (a host's own limit answer).

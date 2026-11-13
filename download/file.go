@@ -94,8 +94,17 @@ func (x *transfer) once(ctx context.Context) (retry bool, err error) {
 	if x.opts.Authorize != nil {
 		x.opts.Authorize(req)
 	}
+	// The idle limit covers the wait for the headers too: the default transport has no header timeout.
+	stop := func() bool { return false }
+	if idle := x.opts.idle(); idle > 0 {
+		stop = time.AfterFunc(idle, func() { cancel(ErrIdle) }).Stop
+	}
 	resp, err := x.hc.Do(req)
+	stop()
 	if err != nil {
+		if errors.Is(context.Cause(reqCtx), ErrIdle) {
+			return false, ErrIdle
+		}
 		return false, httpkit.RedactError(err)
 	}
 	defer func() { _ = resp.Body.Close() }()

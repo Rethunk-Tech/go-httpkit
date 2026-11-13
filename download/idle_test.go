@@ -47,6 +47,18 @@ func TestFileStallFailsWithErrIdleAndKeepsThePartial(t *testing.T) {
 	})
 }
 
+func TestFileServerThatNeverAnswersFailsWithErrIdle(t *testing.T) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		srv := httptest.NewTestServer(t, http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { <-r.Context().Done() }))
+		start := time.Now()
+		err := File(t.Context(), srv.Client(), srv.URL, newDest(t), Options{Limit: bigLimit})
+		if !errors.Is(err, ErrIdle) || time.Since(start) != defaultIdle {
+			t.Fatalf("err = %v after %v", err, time.Since(start))
+		}
+	})
+}
+
 func TestFileIdleOptionSetsAndDisablesTheLimit(t *testing.T) {
 	t.Parallel()
 	synctest.Test(t, func(t *testing.T) {

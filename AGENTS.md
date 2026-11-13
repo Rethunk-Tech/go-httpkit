@@ -36,7 +36,7 @@ rename or remove that Windows refuses shows up.
 - Any 200 starts over and resets every recorded validator, size and digest: they describe another body. A 206 is
   accepted only when `Content-Range` is a real interval that starts at the offset and whose total matches the
   recorded size.
-- The idle limit is a `context.WithCancelCause` on the request, armed only while a body `Read` is blocked. After
+- The idle limit is a `context.WithCancelCause` on the request, armed only while the headers are awaited or a body `Read` is blocked. After
   the copy, `File` reads the cause and reports `ErrIdle` whatever the transport returned, because over HTTP/2 the
   body `Read` returns a bare `context.Canceled`. `ErrIdle` wraps `context.DeadlineExceeded` so a caller that treats
   deadlines as retryable retries a stall.
