@@ -35,6 +35,9 @@ func File(ctx context.Context, hc *http.Client, url, dest string, opts Options) 
 	}
 	for range restarts + 1 {
 		retry, err := x.once(ctx)
+		for errors.Is(err, errNeedMore) {
+			retry, err = x.once(ctx)
+		}
 		if !retry {
 			return err
 		}
@@ -42,6 +45,12 @@ func File(ctx context.Context, hc *http.Client, url, dest string, opts Options) 
 	}
 	return ErrNoResume
 }
+
+// errNeedMore is a 206 whose Content-Range total is unknown: the slice is on disk and another Range may follow.
+var errNeedMore = errors.New("download: more ranges remain")
+
+// errRangeComplete is a 416 after bytes were written under an unknown total: dest already holds the object.
+var errRangeComplete = errors.New("download: the unknown-total range is complete")
 
 // transfer is one File call; once runs an attempt, which prepare, accept and write divide between them.
 type transfer struct {
@@ -92,6 +101,9 @@ func (x *transfer) once(ctx context.Context) (retry bool, err error) {
 		}
 	}
 	if retry, err := x.accept(resp); retry || err != nil {
+		if errors.Is(err, errRangeComplete) {
+			return false, verify(x.dest, x.meta, x.opts.Digest)
+		}
 		return retry, err
 	}
 	return false, x.write(ctx, reqCtx, cancel, resp)
@@ -133,11 +145,8 @@ func (x *transfer) accept(resp *http.Response) (retry bool, err error) {
 		return true, nil
 	}
 	x.meta.URL = x.url
-	switch {
-	case resp.StatusCode == http.StatusOK && resp.ContentLength > 0:
+	if resp.StatusCode == http.StatusOK && resp.ContentLength > 0 {
 		x.meta.ExpectedSize = resp.ContentLength
-	case resp.StatusCode == http.StatusPartialContent && x.meta.ExpectedSize == 0 && resp.ContentLength > 0:
-		x.meta.ExpectedSize = x.offset + resp.ContentLength
 	}
 	if x.meta.ExpectedSize > x.opts.Limit || resp.ContentLength > x.opts.Limit {
 		return false, x.tooLarge()
@@ -172,6 +181,9 @@ func (x *transfer) status(resp *http.Response) (retry bool, err error) {
 	case http.StatusUnauthorized, http.StatusForbidden, http.StatusGone:
 		return false, ErrLinkExpired
 	case http.StatusRequestedRangeNotSatisfiable:
+		if x.offset > 0 && x.meta.ExpectedSize == 0 {
+			return false, errRangeComplete
+		}
 		return true, nil
 	default:
 		return false, &httpkit.StatusError{Code: resp.StatusCode, Status: resp.Status}
@@ -242,6 +254,12 @@ func (x *transfer) write(ctx, reqCtx context.Context, cancel context.CancelCause
 	if x.meta.ExpectedSize > 0 && st.Size() != x.meta.ExpectedSize {
 		Remove(x.dest)
 		return fmt.Errorf("%w: %d bytes, not %d", ErrSize, st.Size(), x.meta.ExpectedSize)
+	}
+	if resp.StatusCode == http.StatusPartialContent && x.meta.ExpectedSize == 0 {
+		if st.Size() == x.offset {
+			return verify(x.dest, x.meta, x.opts.Digest)
+		}
+		return errNeedMore
 	}
 	return verify(x.dest, x.meta, x.opts.Digest)
 }

@@ -366,6 +366,25 @@ func TestFileRefusesAnHTTPSDowngrade(t *testing.T) {
 	}
 }
 
+func TestFileDoesNotTreatAShortUnknownTotal206AsComplete(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("ETag", `"v1"`)
+		w.Header().Set("Content-Range", "bytes 10-14/*")
+		w.Header().Set("Content-Length", "5")
+		w.WriteHeader(http.StatusPartialContent)
+		_, _ = io.WriteString(w, "abcde")
+	}))
+	t.Cleanup(srv.Close)
+	dest := newDest(t)
+	seedPartial(t, dest, resumeBody[:10], sidecar{URL: srv.URL, ETag: `"v1"`})
+	err := fetch(t, srv, dest, Options{Idle: -1})
+	st, statErr := os.Stat(dest)
+	if err == nil && statErr == nil && st.Size() == 15 {
+		t.Fatal("File succeeded with a 15-byte dest")
+	}
+}
+
 func TestFileCancelKeepsThePartial(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())
