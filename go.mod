@@ -10,7 +10,7 @@ tool (
 	golang.org/x/vuln/cmd/govulncheck
 )
 
-require github.com/Rethunk-Tech/go-safefs v0.9.0
+require github.com/Rethunk-Tech/go-safefs v0.9.1
 
 require (
 	4d63.com/gocheckcompilerdirectives v1.4.0 // indirect
