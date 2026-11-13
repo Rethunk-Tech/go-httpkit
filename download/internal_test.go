@@ -71,3 +71,9 @@ func TestNewRangeReaderDefaultsItsClient(t *testing.T) {
 		t.Error("a nil client was kept")
 	}
 }
+
+func TestFileDefaultClientHasNoTotalTimeout(t *testing.T) {
+	if defaultFileClient().Timeout != 0 {
+		t.Error("a nil client to File must not carry a total timeout")
+	}
+}

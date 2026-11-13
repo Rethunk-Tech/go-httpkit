@@ -17,7 +17,8 @@ import (
 
 // File streams url into dest. A partial dest with its sidecar is resumed with Range and If-Range when the server
 // and the recorded validators allow; anything else starts over. Redirects follow httpkit.NoDowngrade. A nil hc
-// means &http.Client{Timeout: 30 * time.Minute}; http.DefaultClient has no timeout at all.
+// means a client with no total timeout, so a healthy slow download is never cut off; Options.Idle (default on) ends a
+// stalled one. A caller that sets Idle negative should pass a client with its own Timeout or cancel ctx.
 //
 // A body over opts.Limit fails with an error matching safefs.ErrTooLarge, any status other than 200, 206, 401, 403,
 // 410 or 416 with a *httpkit.StatusError. A network error, stall or cancel keeps the partial for the next call; a
@@ -27,7 +28,7 @@ func File(ctx context.Context, hc *http.Client, url, dest string, opts Options) 
 		return errNoLimit
 	}
 	if hc == nil {
-		hc = &http.Client{Timeout: 30 * time.Minute}
+		hc = defaultFileClient()
 	}
 	x := &transfer{hc: httpkit.WithRedirect(hc, httpkit.NoDowngrade), url: url, dest: dest, opts: opts}
 	if opts.Authorize != nil {
@@ -45,6 +46,9 @@ func File(ctx context.Context, hc *http.Client, url, dest string, opts Options) 
 	}
 	return ErrNoResume
 }
+
+// defaultFileClient has no Timeout: Options.Idle catches stalls, and a total limit would fail slow but healthy downloads.
+func defaultFileClient() *http.Client { return &http.Client{} }
 
 // errNeedMore is a 206 whose Content-Range total is unknown: the slice is on disk and another Range may follow.
 var errNeedMore = errors.New("download: more ranges remain")
