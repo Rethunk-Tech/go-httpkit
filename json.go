@@ -19,7 +19,7 @@ type JSONOptions struct {
 	Check func(*http.Response) error
 }
 
-// DoJSON sends req with hc (nil means http.DefaultClient) and decodes a 200 answer's JSON body into out. A 429 is a
+// DoJSON sends req with hc (nil means a client with DefaultTimeout) and decodes a 200 answer's JSON body into out. A 429 is a
 // *RateLimitError carrying the Retry-After reset, any other status a *StatusError, a body over the limit
 // safefs.ErrTooLarge, and malformed JSON an error wrapping the decoder's. Accept is set to application/json when
 // req names none.
