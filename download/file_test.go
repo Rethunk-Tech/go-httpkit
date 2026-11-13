@@ -385,6 +385,28 @@ func TestFileDoesNotTreatAShortUnknownTotal206AsComplete(t *testing.T) {
 	}
 }
 
+func TestFileDoesNotApplyAPartialContentMD5ToTheFinishedFile(t *testing.T) {
+	t.Parallel()
+	prefix, tail := resumeBody[:10], resumeBody[10:]
+	sum := md5.Sum([]byte(tail)) // #nosec G401 -- Content-MD5 is MD5 by RFC 1864.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("ETag", `"v1"`)
+		w.Header().Set("Content-MD5", base64.StdEncoding.EncodeToString(sum[:]))
+		w.Header().Set("Content-Range", "bytes 10-19/20")
+		w.WriteHeader(http.StatusPartialContent)
+		_, _ = io.WriteString(w, tail)
+	}))
+	t.Cleanup(srv.Close)
+	dest := newDest(t)
+	seedPartial(t, dest, prefix, sidecar{URL: srv.URL, ETag: `"v1"`, ExpectedSize: int64(len(resumeBody))})
+	if err := fetch(t, srv, dest, Options{}); err != nil {
+		t.Fatalf("err = %v", err)
+	}
+	if readFile(t, dest) != resumeBody {
+		t.Fatal("dest is not the full body")
+	}
+}
+
 func TestFileCancelKeepsThePartial(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(t.Context())

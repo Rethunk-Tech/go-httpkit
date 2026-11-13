@@ -210,8 +210,10 @@ func (x *transfer) validators(resp *http.Response) (stale bool) {
 	if h := hashFrom(resp.Header); h != "" {
 		x.meta.Hash = h
 	}
-	if v := strings.TrimSpace(resp.Header.Get("Content-MD5")); v != "" {
-		x.meta.MD5 = v
+	if resp.StatusCode == http.StatusOK {
+		if v := strings.TrimSpace(resp.Header.Get("Content-MD5")); v != "" {
+			x.meta.MD5 = v
+		}
 	}
 	return false
 }
