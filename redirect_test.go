@@ -37,6 +37,9 @@ func TestNoDowngradeAndSameOrigin(t *testing.T) {
 		{"another port", "https://a.example/x", "https://a.example:8443/z", true, false},
 		{"http first hop is free", "http://a.example/x", "https://b.example/y", true, false},
 		{"http to http", "http://a.example/x", "http://a.example/y", true, true},
+		{"host case", "https://A.Example/x", "https://a.example/y", true, true},
+		{"explicit default port", "https://a.example:443/x", "https://a.example/y", true, true},
+		{"trailing dot", "https://a.example/x", "https://a.example./y", true, false},
 	} {
 		req, via := chain(t, c.first, c.next)
 		if got := httpkit.NoDowngrade(req, via) == nil; got != c.noDowngrade {
@@ -149,6 +152,26 @@ func TestStripCrossHostDropsTheNamedHeaders(t *testing.T) {
 	got := seenHeaders(t, httpkit.WithRedirect(nil, httpkit.StripCrossHost("X-Customer")), map[string]string{"X-Customer": "c"})
 	if got.Get("X-Customer") != "" {
 		t.Fatalf("named header crossed hosts: %v", got)
+	}
+}
+
+func TestStripCrossHostKeepsTheOriginAndDropsOnDowngrade(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name, first, next string
+		kept              bool
+	}{
+		{"host case", "https://API.example/x", "https://api.example/y", true},
+		{"explicit default port", "https://api.example:443/x", "https://api.example/y", true},
+		{"upgrade", "http://api.example/x", "https://api.example/y", true},
+		{"another port", "https://api.example/x", "https://api.example:8443/y", false},
+	} {
+		req, via := chain(t, c.first, c.next)
+		req.Header = http.Header{"X-Api-Key": {"k"}}
+		_ = httpkit.StripCrossHost()(req, via)
+		if got := req.Header.Get("X-Api-Key") != ""; got != c.kept {
+			t.Errorf("%s: kept = %v", c.name, got)
+		}
 	}
 }
 

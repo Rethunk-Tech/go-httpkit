@@ -3,6 +3,7 @@ package httpkit
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -25,7 +26,7 @@ var credentialWords = []string{"auth", "key", "token", "secret", "cookie", "sess
 // host other than the first request's. It never refuses a redirect.
 func StripCrossHost(names ...string) func(*http.Request, []*http.Request) error {
 	return func(req *http.Request, via []*http.Request) error {
-		if len(via) == 0 || req.URL.Host == via[0].URL.Host {
+		if len(via) == 0 || hostKey(req.URL) == hostKey(via[0].URL) {
 			return nil
 		}
 		for k := range req.Header {
@@ -42,6 +43,24 @@ func StripCrossHost(names ...string) func(*http.Request, []*http.Request) error 
 		}
 		return nil
 	}
+}
+
+var defaultPort = map[string]string{"http": "80", "https": "443"}
+
+// hostKey is u's host with ASCII letters lowered and the scheme's default port dropped, so two spellings of one
+// host compare equal. Other letters are left as is: a stricter compare only strips or refuses more.
+func hostKey(u *url.URL) string {
+	port := u.Port()
+	if port == defaultPort[u.Scheme] {
+		port = ""
+	}
+	lower := func(r rune) rune {
+		if 'A' <= r && r <= 'Z' {
+			return r + 'a' - 'A'
+		}
+		return r
+	}
+	return net.JoinHostPort(strings.Map(lower, u.Hostname()), port)
 }
 
 // RedactURL is raw without its query, fragment and userinfo: a query often carries a signature or an API key, and
@@ -89,7 +108,7 @@ func SameOrigin(req *http.Request, via []*http.Request) error {
 	if len(via) >= maxRedirects {
 		return errTooManyRedirects
 	}
-	if first := via[0].URL; req.URL.Host != first.Host || req.URL.Scheme != first.Scheme {
+	if first := via[0].URL; hostKey(req.URL) != hostKey(first) || req.URL.Scheme != first.Scheme {
 		return fmt.Errorf("refusing a redirect to %s://%s", req.URL.Scheme, req.URL.Host)
 	}
 	return nil
