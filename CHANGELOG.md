@@ -6,6 +6,10 @@ Notable changes to `go-httpkit`. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- `StripCrossHost` (and `NoDowngrade`) keep credentials stripped for the rest of a redirect chain once a hop leaves the first request's origin, so A to B to A no longer hands them back to A.
+
 ## [0.3.0] - 2026-11-08
 
 ### Added

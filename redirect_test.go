@@ -186,6 +186,23 @@ func TestStripCrossHostDropsANonCanonicalKey(t *testing.T) {
 	}
 }
 
+// net/http copies the first request's headers onto every hop, so a chain that comes back to the origin would hand the
+// credentials to it again after a hop elsewhere saw the chain; once the chain leaves, they stay stripped.
+func TestStripCrossHostKeepsStrippingAfterTheChainLeaves(t *testing.T) {
+	t.Parallel()
+	for _, urls := range [][]string{
+		{"https://a.example/", "https://b.example/", "https://a.example/"},
+		{"https://a.example/", "http://a.example/", "https://a.example/"},
+	} {
+		req, via := chain(t, urls...)
+		req.Header = http.Header{"X-Api-Key": {"k"}, "X-Customer": {"c"}}
+		_ = httpkit.StripCrossHost("X-Customer")(req, via)
+		if len(req.Header) != 0 {
+			t.Errorf("%v: headers restored on the way back: %v", urls, req.Header)
+		}
+	}
+}
+
 func TestRedactURLAndError(t *testing.T) {
 	if got := httpkit.RedactURL("https://u:p@h.example/a?api_key=SECRET#f"); got != "https://h.example/a" {
 		t.Fatalf("RedactURL = %q", got)
