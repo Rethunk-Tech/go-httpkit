@@ -176,6 +176,16 @@ func TestStripCrossHostKeepsTheOriginAndDropsOnDowngrade(t *testing.T) {
 	}
 }
 
+func TestStripCrossHostDropsANonCanonicalKey(t *testing.T) {
+	t.Parallel()
+	req, via := chain(t, "https://a.example/", "https://b.example/")
+	req.Header = http.Header{"x-api-key": {"k"}, "x-customer": {"c"}}
+	_ = httpkit.StripCrossHost("X-Customer")(req, via)
+	if len(req.Header) != 0 {
+		t.Fatalf("headers crossed hosts: %v", req.Header)
+	}
+}
+
 func TestRedactURLAndError(t *testing.T) {
 	if got := httpkit.RedactURL("https://u:p@h.example/a?api_key=SECRET#f"); got != "https://h.example/a" {
 		t.Fatalf("RedactURL = %q", got)

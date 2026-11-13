@@ -469,12 +469,12 @@ func TestFileDropsWhatAuthorizeSetOnARedirectToAnotherHost(t *testing.T) {
 	defer origin.Close()
 	err := File(t.Context(), nil, origin.URL, filepath.Join(t.TempDir(), "f"), Options{
 		Limit:     1 << 10,
-		Authorize: func(r *http.Request) { r.Header.Set("X-Customer", "c") },
+		Authorize: func(r *http.Request) { r.Header.Set("X-Customer", "c"); r.Header["x-tenant"] = []string{"t"} },
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Get("X-Customer") != "" {
+	if got.Get("X-Customer") != "" || got.Get("X-Tenant") != "" {
 		t.Fatalf("Authorize's header crossed hosts: %v", got)
 	}
 }

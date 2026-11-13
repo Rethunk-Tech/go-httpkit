@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 )
@@ -34,17 +35,13 @@ func StripCrossHost(names ...string) func(*http.Request, []*http.Request) error 
 		if hostKey(req.URL) == hostKey(via[0].URL) && !downgrade {
 			return nil
 		}
+		// delete, not Header.Del: a key set straight into the map need not be canonical, and Del canonicalizes.
 		for k := range req.Header {
 			lower := strings.ToLower(k)
-			for _, w := range credentialWords {
-				if strings.Contains(lower, w) {
-					req.Header.Del(k)
-					break
-				}
+			if slices.ContainsFunc(credentialWords, func(w string) bool { return strings.Contains(lower, w) }) ||
+				slices.ContainsFunc(names, func(n string) bool { return strings.EqualFold(n, k) }) {
+				delete(req.Header, k)
 			}
-		}
-		for _, n := range names {
-			req.Header.Del(n)
 		}
 		return nil
 	}

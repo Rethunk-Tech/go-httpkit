@@ -317,8 +317,13 @@ func dropAuthorized(authorize func(*http.Request)) func(*http.Request, []*http.R
 		}
 		probe := &http.Request{Method: http.MethodGet, URL: via[0].URL, Header: http.Header{}}
 		authorize(probe)
-		for k := range probe.Header {
-			req.Header.Del(k)
+		for k := range req.Header {
+			for owned := range probe.Header {
+				if strings.EqualFold(k, owned) {
+					delete(req.Header, k) // Header.Del would miss a key that is not canonical.
+					break
+				}
+			}
 		}
 		return nil
 	}
