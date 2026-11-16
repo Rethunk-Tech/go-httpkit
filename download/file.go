@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -327,7 +329,7 @@ func (b *idleBody) Read(p []byte) (int, error) {
 // authorize runs on a bare request here, only to learn which headers it owns.
 func dropAuthorized(authorize func(*http.Request)) func(*http.Request, []*http.Request) error {
 	return func(req *http.Request, via []*http.Request) error {
-		if len(via) == 0 || req.URL.Host == via[0].URL.Host {
+		if len(via) == 0 || hostKey(req.URL) == hostKey(via[0].URL) {
 			return nil
 		}
 		probe := &http.Request{Method: http.MethodGet, URL: via[0].URL, Header: http.Header{}}
@@ -342,4 +344,22 @@ func dropAuthorized(authorize func(*http.Request)) func(*http.Request, []*http.R
 		}
 		return nil
 	}
+}
+
+var defaultPort = map[string]string{"http": "80", "https": "443"}
+
+// hostKey is u's host with ASCII letters lowered and the scheme's default port dropped, so two spellings of one
+// host compare equal. Other letters are left as is: a stricter compare only strips or refuses more.
+func hostKey(u *url.URL) string {
+	port := u.Port()
+	if port == defaultPort[u.Scheme] {
+		port = ""
+	}
+	lower := func(r rune) rune {
+		if 'A' <= r && r <= 'Z' {
+			return r + 'a' - 'A'
+		}
+		return r
+	}
+	return net.JoinHostPort(strings.Map(lower, u.Hostname()), port)
 }
