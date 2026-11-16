@@ -286,7 +286,9 @@ func (x *transfer) write(ctx, reqCtx context.Context, cancel context.CancelCause
 	}
 	if resp.StatusCode == http.StatusPartialContent && x.meta.ExpectedSize == 0 {
 		if st.Size() == x.offset {
-			return verify(x.dest, x.meta, x.opts.Digest)
+			// A 206 promises a non-empty range, so none of it arriving is a broken answer: asking again from
+			// the same offset would only repeat it, and only a 416 proves the partial holds everything.
+			return fmt.Errorf("%w: a range of %d bytes arrived with none", io.ErrUnexpectedEOF, x.rangeLen)
 		}
 		return errNeedMore
 	}

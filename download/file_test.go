@@ -315,6 +315,38 @@ func TestFileRefusesABodyPastTheRangeItAskedFor(t *testing.T) {
 	}
 }
 
+// An empty 206 whose range is not empty proves nothing: with no total, only a 416 says the object is complete.
+func TestFileRefusesAnEmpty206ThatPromisesMore(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name, contentRange, prefix string
+	}{
+		{"whole object", "bytes 0-99/*", ""},
+		{"resumed", "bytes 10-19/*", resumeBody[:10]},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("ETag", `"v1"`)
+				w.Header().Set("Content-Range", c.contentRange)
+				w.Header().Set("Content-Length", "0")
+				w.WriteHeader(http.StatusPartialContent)
+			}))
+			t.Cleanup(srv.Close)
+			dest := newDest(t)
+			if c.prefix != "" {
+				seedPartial(t, dest, c.prefix, sidecar{URL: srv.URL, ETag: `"v1"`})
+			}
+			if err := fetch(t, srv, dest, Options{Idle: -1}); err == nil {
+				t.Fatalf("an empty 206 for %s finished the file", c.contentRange)
+			}
+			if c.prefix != "" && readFile(t, dest) != c.prefix {
+				t.Fatalf("an empty 206 rewrote the partial of %s", c.contentRange)
+			}
+		})
+	}
+}
+
 func TestFileStatuses(t *testing.T) {
 	t.Parallel()
 	for _, c := range []struct {
