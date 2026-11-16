@@ -12,49 +12,49 @@ go get github.com/Rethunk-Tech/go-httpkit
 package main
 
 import (
- "context"
- "errors"
- "fmt"
- "net/http"
- "time"
+	"context"
+	"errors"
+	"fmt"
+	"net/http"
+	"time"
 
- "github.com/Rethunk-Tech/go-httpkit"
- "github.com/Rethunk-Tech/go-httpkit/download"
+	"github.com/Rethunk-Tech/go-httpkit"
+	"github.com/Rethunk-Tech/go-httpkit/download"
 )
 
 func main() {
- // One identity for every client in the program, and a place to watch reachability.
- http.DefaultTransport = &httpkit.Transport{Base: http.DefaultTransport, UserAgent: "my-app/1.0"}
+	// One identity for every client in the program, and a place to watch reachability.
+	http.DefaultTransport = &httpkit.Transport{Base: http.DefaultTransport, UserAgent: "my-app/1.0"}
 
- ctx := context.Background()
- api := httpkit.WithRedirect(nil, httpkit.SameOrigin) // Keeps an API key on its own origin.
- req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.example.com/v1/items", nil)
- if err != nil {
-  panic(err)
- }
-  body, err := httpkit.DoCapped(api, req, 1<<20, nil)
-  switch {
-  case errors.Is(err, httpkit.ErrNotFound):
-   fmt.Println("gone")
-  case errors.Is(err, httpkit.ErrRateLimited):
-   fmt.Println("try again later")
- case err != nil:
-  fmt.Println("failed:", err)
- default:
-  fmt.Println(len(body), "bytes")
- }
+	ctx := context.Background()
+	api := httpkit.WithRedirect(nil, httpkit.SameOrigin) // Keeps an API key on its own origin.
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.example.com/v1/items", nil)
+	if err != nil {
+		panic(err)
+	}
+	body, err := httpkit.DoCapped(api, req, 1<<20, nil)
+	switch {
+	case errors.Is(err, httpkit.ErrNotFound):
+		fmt.Println("gone")
+	case errors.Is(err, httpkit.ErrRateLimited):
+		fmt.Println("try again later")
+	case err != nil:
+		fmt.Println("failed:", err)
+	default:
+		fmt.Println(len(body), "bytes")
+	}
 
- // Resume a large download across restarts: at most 200 MiB, one shared speed cap.
- limiter := &download.Limiter{Rate: func() int64 { return 1 << 20 }}
- err = download.File(ctx, nil, "https://cdn.example.com/big.zip", "big.zip", download.Options{
-  Limit:    200 << 20,
-  Limiter:  limiter,
-  Idle:     20 * time.Second,
-  Progress: func(done, total int64) { fmt.Println(done, "of", total) },
- })
- if errors.Is(err, download.ErrLinkExpired) {
-  fmt.Println("fetch a fresh link and call File again; the partial resumes")
- }
+	// Resume a large download across restarts: at most 200 MiB, one shared speed cap.
+	limiter := &download.Limiter{Rate: func() int64 { return 1 << 20 }}
+	err = download.File(ctx, nil, "https://cdn.example.com/big.zip", "big.zip", download.Options{
+		Limit:    200 << 20,
+		Limiter:  limiter,
+		Idle:     20 * time.Second,
+		Progress: func(done, total int64) { fmt.Println(done, "of", total) },
+	})
+	if errors.Is(err, download.ErrLinkExpired) {
+		fmt.Println("fetch a fresh link and call File again; the partial resumes")
+	}
 }
 ```
 
