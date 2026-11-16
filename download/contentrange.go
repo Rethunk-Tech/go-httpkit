@@ -8,7 +8,10 @@ import (
 // parseContentRange reads "bytes start-end/total". total is 0 when the server sends "*". It accepts only a range
 // that is a real interval of a file that holds it: 0 <= start <= end and total either "*" or above end.
 func parseContentRange(h string) (start, end, total int64, ok bool) {
-	h = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(h), "bytes"))
+	h = strings.TrimSpace(h)
+	if len(h) >= 5 && strings.EqualFold(h[:5], "bytes") {
+		h = strings.TrimSpace(h[5:])
+	}
 	rangePart, totalPart, found := strings.Cut(h, "/")
 	if !found {
 		return 0, 0, 0, false
