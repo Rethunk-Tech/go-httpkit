@@ -18,7 +18,7 @@ import (
 // hashFrom is the sidecar form of the X-Checksum-Sha256 header, or empty when the server sent none.
 func hashFrom(h http.Header) string {
 	if v := strings.TrimSpace(h.Get("X-Checksum-Sha256")); v != "" {
-		return "sha256:" + strings.ToLower(strings.TrimPrefix(v, "sha256:"))
+		return "sha256:" + strings.ToLower(strings.TrimPrefix(strings.ToLower(v), "sha256:"))
 	}
 	return ""
 }
