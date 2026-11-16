@@ -294,6 +294,27 @@ func TestFileFailsOnTheWrongSize(t *testing.T) {
 	}
 }
 
+// A 206 promises exactly the bytes of its range: a body past the end is another file's bytes and must not finish dest.
+func TestFileRefusesABodyPastTheRangeItAskedFor(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("ETag", `"v1"`)
+		w.Header().Set("Content-Range", "bytes 10-14/20")
+		w.Header().Set("Content-Length", "10")
+		w.WriteHeader(http.StatusPartialContent)
+		_, _ = io.WriteString(w, resumeBody[10:])
+	}))
+	t.Cleanup(srv.Close)
+	dest := newDest(t)
+	seedPartial(t, dest, resumeBody[:10], sidecar{URL: srv.URL, ETag: `"v1"`, ExpectedSize: int64(len(resumeBody))})
+	if err := fetch(t, srv, dest, Options{Idle: -1}); err == nil {
+		t.Fatal("a ten-byte body for a five-byte range finished the file")
+	}
+	if Partial(dest) != 0 {
+		t.Fatalf("the bytes past the range stayed on disk: %d", Partial(dest))
+	}
+}
+
 func TestFileStatuses(t *testing.T) {
 	t.Parallel()
 	for _, c := range []struct {

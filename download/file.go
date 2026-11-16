@@ -62,9 +62,10 @@ type transfer struct {
 	url, dest string
 	opts      Options
 
-	meta    sidecar
-	sameURL bool  // The sidecar was written for this URL (or for none).
-	offset  int64 // Bytes of the partial the request continues from.
+	meta     sidecar
+	sameURL  bool  // The sidecar was written for this URL (or for none).
+	offset   int64 // Bytes of the partial the request continues from.
+	rangeLen int64 // Bytes the accepted 206 promised; 0 for a whole-body answer.
 }
 
 // reset drops the partial and what was recorded about it.
@@ -172,6 +173,7 @@ func (x *transfer) tooLarge() error {
 }
 
 func (x *transfer) status(resp *http.Response) (retry bool, err error) {
+	x.rangeLen = 0
 	switch resp.StatusCode {
 	case http.StatusOK:
 		// Any 200 starts over: the old size and digests describe another body.
@@ -181,7 +183,7 @@ func (x *transfer) status(resp *http.Response) (retry bool, err error) {
 		}
 		x.meta = sidecar{URL: x.url}
 	case http.StatusPartialContent:
-		start, _, total, ok := parseContentRange(resp.Header.Get("Content-Range"))
+		start, end, total, ok := parseContentRange(resp.Header.Get("Content-Range"))
 		if !ok || start != x.offset {
 			return true, nil
 		}
@@ -191,6 +193,7 @@ func (x *transfer) status(resp *http.Response) (retry bool, err error) {
 		if total > 0 {
 			x.meta.ExpectedSize = total
 		}
+		x.rangeLen = end - start + 1
 	case http.StatusUnauthorized, http.StatusForbidden, http.StatusGone:
 		return false, ErrLinkExpired
 	case http.StatusRequestedRangeNotSatisfiable:
@@ -256,9 +259,19 @@ func (x *transfer) write(ctx, reqCtx context.Context, cancel context.CancelCause
 	if idle := x.opts.idle(); idle > 0 {
 		src = &idleBody{r: src, idle: idle, cancel: cancel}
 	}
-	src = x.opts.Limiter.wrap(ctx, safefs.CapReader(src, x.opts.Limit-x.offset))
-	if _, err := io.Copy(w, src); err != nil {
+	bounded := src
+	if x.rangeLen > 0 {
+		// A 206 promises exactly its range, so the copy stops one byte past its end: that byte tells a longer
+		// body, which is another object's bytes, from an exact one.
+		bounded = io.LimitReader(src, x.rangeLen+1)
+	}
+	got, err := io.Copy(w, x.opts.Limiter.wrap(ctx, safefs.CapReader(bounded, x.opts.Limit-x.offset)))
+	if err != nil {
 		return x.copyFailed(ctx, reqCtx, err)
+	}
+	if x.rangeLen > 0 && got > x.rangeLen {
+		Remove(x.dest)
+		return fmt.Errorf("%w: the body runs past its range of %d bytes", ErrSize, x.rangeLen)
 	}
 	if err := f.Close(); err != nil {
 		return fmt.Errorf("close the download: %w", err)
