@@ -41,7 +41,7 @@ func verify(dest string, meta sidecar, digest string) error {
 		}
 		wantMD5 = b
 	}
-	f, err := safefs.Open(dest)
+	f, err := safefs.OpenRegular(dest)
 	if err != nil {
 		return err
 	}
@@ -84,7 +84,7 @@ func verifyDigest(path, digest string) error {
 }
 
 func compareHash(path string, h hash.Hash, want, name string) error {
-	f, err := safefs.Open(path)
+	f, err := safefs.OpenRegular(path)
 	if err != nil {
 		return err
 	}

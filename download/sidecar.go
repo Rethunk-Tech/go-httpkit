@@ -30,7 +30,7 @@ func Sidecar(dest string) string { return dest + SidecarSuffix }
 // loadSidecar reads dest's sidecar; one that is missing, torn or unreadable is empty, so its partial counts as vouched for
 // by nothing and is dropped.
 func loadSidecar(dest string) sidecar {
-	f, err := safefs.Open(Sidecar(dest))
+	f, err := safefs.OpenRegular(Sidecar(dest))
 	if err != nil {
 		return sidecar{}
 	}

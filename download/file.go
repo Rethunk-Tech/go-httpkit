@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"syscall"
 	"time"
 
 	safefs "github.com/Rethunk-Tech/go-safefs"
@@ -242,10 +243,11 @@ func (x *transfer) validators(resp *http.Response) (stale bool) {
 func (x *transfer) write(ctx, reqCtx context.Context, cancel context.CancelCauseFunc, resp *http.Response) error {
 	var f *os.File
 	var err error
+	// O_NONBLOCK: a dest swapped for a pipe after Stat must not block the open; the handle's type decides.
 	if x.offset > 0 {
-		f, err = safefs.OpenFile(x.dest, os.O_WRONLY|os.O_APPEND, 0o600)
+		f, err = safefs.OpenFile(x.dest, os.O_WRONLY|os.O_APPEND|syscall.O_NONBLOCK, 0o600)
 	} else {
-		f, err = safefs.Create(x.dest)
+		f, err = safefs.OpenFile(x.dest, os.O_RDWR|os.O_CREATE|os.O_TRUNC|syscall.O_NONBLOCK, 0o666)
 	}
 	if err != nil {
 		return fmt.Errorf("open the download: %w", err)
