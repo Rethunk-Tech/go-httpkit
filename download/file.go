@@ -251,6 +251,11 @@ func (x *transfer) write(ctx, reqCtx context.Context, cancel context.CancelCause
 		return fmt.Errorf("open the download: %w", err)
 	}
 	defer func() { _ = f.Close() }()
+	if st, err := f.Stat(); err != nil {
+		return fmt.Errorf("open the download: %w", err)
+	} else if !st.Mode().IsRegular() {
+		return fmt.Errorf("open the download: %w", safefs.ErrNotRegular)
+	}
 	saveSidecar(x.dest, x.meta)
 
 	var w io.Writer = f
