@@ -1,6 +1,7 @@
 package download
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -78,6 +79,52 @@ func FuzzSidecar(f *testing.F) {
 			}
 		} else if err == nil {
 			t.Fatal("succeeded without a file")
+		}
+	})
+}
+
+func FuzzLoadSidecar(f *testing.F) {
+	fixture, err := os.ReadFile("testdata/sidecar.json")
+	if err != nil {
+		f.Fatal(err)
+	}
+	for _, b := range [][]byte{
+		fixture,
+		[]byte(`{"expectedSize":20,"url":"x"}`),
+		[]byte(`{"expectedSize":-5,"url":"x"}`),
+		[]byte(`{"expectedSize":20,"hash":"sha256:00","md5":"%%"}`),
+		[]byte("{"),
+		[]byte(`{"expectedSize":99999999999999999999}`),
+		{},
+	} {
+		f.Add(b)
+	}
+	f.Fuzz(func(t *testing.T, b []byte) {
+		dest := newDest(t)
+		if err := os.WriteFile(Sidecar(dest), b, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		m := loadSidecar(dest)
+		if len(b) > maxSidecar {
+			if m != (sidecar{}) {
+				t.Fatalf("oversize sidecar was used: %#v", m)
+			}
+			return
+		}
+		var want sidecar
+		if json.Unmarshal(b, &want) != nil {
+			if m != (sidecar{}) {
+				t.Fatalf("torn sidecar was used: %#v", m)
+			}
+			return
+		}
+		if m != want {
+			t.Fatalf("loadSidecar = %#v, want %#v", m, want)
+		}
+		out := dest + ".rt"
+		saveSidecar(out, m)
+		if got := loadSidecar(out); got != m {
+			t.Fatalf("round-trip %#v → %#v", m, got)
 		}
 	})
 }

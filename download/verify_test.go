@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -59,4 +60,39 @@ func TestVerifyDigest(t *testing.T) {
 	if err := verify(writeVerifyFile(t), meta, "md5:00"); err == nil || !errors.Is(err, ErrChecksum) {
 		t.Error("a wrong md5 passed")
 	}
+}
+
+func FuzzVerifyDigest(f *testing.F) {
+	sum := sha256.Sum256([]byte("abc"))
+	sum512 := sha512.Sum512([]byte("abc"))
+	matchSHA := "sha256:" + hex.EncodeToString(sum[:])
+	match512 := "sha512:" + hex.EncodeToString(sum512[:])
+	const matchMD5 = "md5:900150983cd24fb0d6963f7d28e17f72"
+	for _, s := range []string{matchSHA, match512, matchMD5, " SHA256:" + hex.EncodeToString(sum[:]) + " ", "", "blake3:00", "sha-256:00", "00", "sha256:00", "sha512:00", "md5:00"} {
+		f.Add(s)
+	}
+	f.Fuzz(func(t *testing.T, digest string) {
+		p := writeVerifyFile(t)
+		err := verifyDigest(p, digest)
+		switch d := strings.ToLower(strings.TrimSpace(digest)); {
+		case d == "" || d == matchSHA || d == match512 || d == matchMD5:
+			if err != nil {
+				t.Fatalf("matching %q: %v", digest, err)
+			}
+		case strings.HasPrefix(d, "sha256:") || strings.HasPrefix(d, "sha512:") || strings.HasPrefix(d, "md5:"):
+			if err == nil {
+				t.Fatalf("mismatch passed: %q", digest)
+			}
+			if !errors.Is(err, ErrChecksum) {
+				t.Fatalf("mismatch %q: %v", digest, err)
+			}
+			if _, statErr := os.Stat(p); !errors.Is(statErr, os.ErrNotExist) {
+				t.Fatalf("mismatch left the file: %q", digest)
+			}
+		default:
+			if err == nil {
+				t.Fatalf("unknown form passed: %q", digest)
+			}
+		}
+	})
 }
