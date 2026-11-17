@@ -118,6 +118,14 @@ func TestRangeReaderRefusesAShortOrMismatchedPartial(t *testing.T) {
 	}
 }
 
+func TestRangeReaderRedactsCredentialsInAMalformedURL(t *testing.T) {
+	t.Parallel()
+	_, err := NewRangeReader(t.Context(), nil, "https://[::1/x?api_key=SECRET", 10).ReadAt(make([]byte, 1), 0)
+	if err == nil || strings.Contains(err.Error(), "SECRET") {
+		t.Fatalf("error leaks the query: %v", err)
+	}
+}
+
 func TestRangeReaderRefusesAnHTTPSDowngrade(t *testing.T) {
 	t.Parallel()
 	var httpHits atomic.Int32

@@ -81,7 +81,7 @@ func (r *RangeReader) ReadAt(p []byte, off int64) (int, error) {
 func (r *RangeReader) get(start, end int64) ([]byte, error) {
 	req, err := http.NewRequestWithContext(r.ctx, http.MethodGet, r.url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("ranged read: %w", err)
+		return nil, fmt.Errorf("ranged read: %w", httpkit.RedactError(err))
 	}
 	req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", start, end-1))
 	if r.etag != "" {

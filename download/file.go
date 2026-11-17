@@ -86,7 +86,7 @@ func (x *transfer) once(ctx context.Context) (retry bool, err error) {
 	defer cancel(nil)
 	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, x.url, nil)
 	if err != nil {
-		return false, fmt.Errorf("build the download request: %w", err)
+		return false, fmt.Errorf("build the download request: %w", httpkit.RedactError(err))
 	}
 	if x.offset > 0 {
 		req.Header.Set("Range", fmt.Sprintf("bytes=%d-", x.offset))

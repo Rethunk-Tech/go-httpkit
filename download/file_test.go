@@ -509,6 +509,14 @@ func TestFileCancelKeepsThePartial(t *testing.T) {
 	}
 }
 
+func TestFileRedactsCredentialsInAMalformedURL(t *testing.T) {
+	t.Parallel()
+	err := File(t.Context(), nil, "https://[::1/x?api_key=SECRET", newDest(t), Options{Limit: 1})
+	if err == nil || strings.Contains(err.Error(), "SECRET") {
+		t.Fatalf("error leaks the query: %v", err)
+	}
+}
+
 func TestFileDropsWhatAuthorizeSetOnARedirectToAnotherHost(t *testing.T) {
 	var got http.Header
 	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
