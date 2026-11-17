@@ -19,12 +19,12 @@ func TestFileDoesNotWriteIntoANamedPipe(t *testing.T) {
 	}
 	leaked := make(chan []byte, 1)
 	go func() {
-		f, err := os.OpenFile(dest, os.O_RDONLY, 0)
+		f, err := os.OpenFile(dest, os.O_RDONLY, 0) //nolint:gosec // G304: dest is the FIFO this test created.
 		if err != nil {
 			leaked <- nil
 			return
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 		b, _ := io.ReadAll(f)
 		leaked <- b
 	}()
