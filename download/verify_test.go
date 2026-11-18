@@ -62,6 +62,22 @@ func TestVerifyDigest(t *testing.T) {
 	}
 }
 
+func TestVerifyReportsAMissingFileRatherThanAChecksum(t *testing.T) {
+	t.Parallel()
+	missing := filepath.Join(t.TempDir(), "gone.bin")
+	hash := "sha256:" + strings.Repeat("0", 64)
+	if err := verify(missing, sidecar{Hash: hash}, ""); err == nil {
+		t.Fatal("a missing file passed against a recorded hash")
+	} else if errors.Is(err, ErrChecksum) {
+		t.Fatalf("a missing file looked like a checksum: %v", err)
+	}
+	if err := verify(missing, sidecar{}, hash); err == nil {
+		t.Fatal("a missing file passed a digest")
+	} else if errors.Is(err, ErrChecksum) {
+		t.Fatalf("a missing file looked like a checksum: %v", err)
+	}
+}
+
 func FuzzVerifyDigest(f *testing.F) {
 	sum := sha256.Sum256([]byte("abc"))
 	sum512 := sha512.Sum512([]byte("abc"))
