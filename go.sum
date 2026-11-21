@@ -40,8 +40,8 @@ github.com/MirrexOne/unqueryvet v1.5.4 h1:38QOxShO7JmMWT+eCdDMbcUgGCOeJphVkzzRgy
 github.com/MirrexOne/unqueryvet v1.5.4/go.mod h1:fs9Zq6eh1LRIhsDIsxf9PONVUjYdFHdtkHIgZdJnyPU=
 github.com/OpenPeeDeeP/depguard/v2 v2.3.0 h1:AzcyrJSVScO5DztG8NB5XSKNeuxqgFsLQf+sTXEbF8w=
 github.com/OpenPeeDeeP/depguard/v2 v2.3.0/go.mod h1:s0C87mbhDHS0xxt0K9kkxb+w+W1mdvgUyajfFs4AcfI=
-github.com/Rethunk-Tech/go-safefs v0.9.1 h1:HfiNmSu4IGQVjDTTGeLOqCl4Xs45gyUcHKX+5PznJ18=
-github.com/Rethunk-Tech/go-safefs v0.9.1/go.mod h1:Kr+UKsuC4mKE4Ec986hwHqqOSz2JqYDdQil10zlQMhw=
+github.com/Rethunk-Tech/go-safefs v0.10.0 h1:Mgey3ZSnsmHOAZqQBN0hAYyKyQNhrwjkJqnNbQD542I=
+github.com/Rethunk-Tech/go-safefs v0.10.0/go.mod h1:XfVUSO6B0XiU6C2v9sZXlEX/PP0eOAuYIt/0g7346Tk=
 github.com/alecthomas/assert/v2 v2.11.0 h1:2Q9r3ki8+JYXvGsDyBXwH3LcJ+WK5D0gc5E8vS6K3D0=
 github.com/alecthomas/assert/v2 v2.11.0/go.mod h1:Bze95FyfUr7x34QZrjL+XP+0qgp/zg8yS+TtBj1WA3k=
 github.com/alecthomas/chroma/v2 v2.27.0 h1:FodwmyOBgJULFYmDqibcp9pvfDLWdtPRh9v/r5BXYZs=
