@@ -43,6 +43,10 @@ func File(ctx context.Context, hc *http.Client, url, dest string, opts Options) 
 			retry, err = x.once(ctx)
 		}
 		if !retry {
+			if err == nil {
+				// A finished file must not be taken for a verified partial by a later call.
+				_ = safefs.Remove(Sidecar(dest))
+			}
 			return err
 		}
 		Remove(dest)

@@ -539,3 +539,26 @@ func TestFileDropsWhatAuthorizeSetOnARedirectToAnotherHost(t *testing.T) {
 		t.Fatalf("Authorize's header crossed hosts: %v", got)
 	}
 }
+
+// A finished download must not leave a sidecar that makes the next call treat the old bytes as verified.
+func TestFileFetchesAgainAfterASuccessfulDownload(t *testing.T) {
+	t.Parallel()
+	var body atomic.Pointer[string]
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, *body.Load())
+	}))
+	t.Cleanup(srv.Close)
+	dest := newDest(t)
+	for _, want := range []string{"first body 0123456789", "second body, changed"} {
+		body.Store(&want)
+		if err := fetch(t, srv, dest, Options{}); err != nil {
+			t.Fatal(err)
+		}
+		if got := readFile(t, dest); got != want {
+			t.Fatalf("got %q, want %q", got, want)
+		}
+		if _, err := os.Stat(Sidecar(dest)); !os.IsNotExist(err) {
+			t.Fatalf("the sidecar survived a success: %v", err)
+		}
+	}
+}

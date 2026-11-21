@@ -8,6 +8,7 @@ Notable changes to `go-httpkit`. The format follows
 
 ### Fixed
 
+- `download.File` removes the `.resume.json` sidecar once a download is verified. It used to stay, so a later call with the same `dest` found a full-size file the sidecar vouched for and returned without a request, even when the remote file had changed.
 - `StripCrossHost` (and `NoDowngrade`) keep credentials stripped for the rest of a redirect chain once a hop leaves the first request's origin, so A to B to A no longer hands them back to A.
 
 ## [0.3.0] - 2026-11-08
